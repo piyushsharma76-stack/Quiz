@@ -1,0 +1,80 @@
+import streamlit as st
+import pandas as pd
+import time
+
+# --- CONFIGURATION ---
+CSV_FILE = 'Questions1.csv'
+BRAND_NAME = "Sahayaks Education"
+
+st.set_page_config(page_title=BRAND_NAME, layout="centered")
+
+# Custom CSS for Styling
+st.markdown("""
+    <style>
+    .main { background-color: #0F1937; color: white; }
+    .stButton>button { width: 100%; border-radius: 10px; height: 3em; font-size: 18px; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Load Data
+@st.cache_data
+def load_data():
+    df = pd.read_csv(CSV_FILE, encoding='latin1').dropna(subset=['question'])
+    return df.to_dict('records')
+
+questions = load_data()
+
+# Initialize Session States
+if 'current_idx' not in st.session_state:
+    st.session_state.current_idx = 0
+    st.session_state.score = 0
+    st.session_state.quiz_over = False
+
+def handle_answer(choice, correct):
+    if choice == correct:
+        st.session_state.score += 1
+        st.success("Correct!")
+    else:
+        st.error(f"Wrong! The correct answer was {correct}")
+    
+    time.sleep(1)
+    st.session_state.current_idx += 1
+    if st.session_state.current_idx >= len(questions):
+        st.session_state.quiz_over = True
+    st.rerun()
+
+# --- UI LOGIC ---
+st.title(BRAND_NAME)
+
+if not st.session_state.quiz_over:
+    q = questions[st.session_state.current_idx]
+    
+    st.subheader(f"Question {st.session_state.current_idx + 1}")
+    st.write(f"### {q['question']}")
+    
+    # Progress bar
+    progress = (st.session_state.current_idx) / len(questions)
+    st.progress(progress)
+
+    # Options
+    col1, col2 = st.columns(2)
+    opts = [q['A'], q['B'], q['C'], q['D']]
+    correct_ans = q['correct_answer']
+
+    with col1:
+        if st.button(f"A. {q['A']}"): handle_answer(q['A'], correct_ans)
+        if st.button(f"C. {q['C']}"): handle_answer(q['C'], correct_ans)
+    with col2:
+        if st.button(f"B. {q['B']}"): handle_answer(q['B'], correct_ans)
+        if st.button(f"D. {q['D']}"): handle_answer(q['D'], correct_ans)
+
+    st.sidebar.write(f"**Score:** {st.session_state.score} / {len(questions)}")
+else:
+    st.balloons()
+    st.header("Quiz Completed!")
+    st.subheader(f"Your Final Score: {st.session_state.score} out of {len(questions)}")
+    if st.button("Restart Quiz"):
+        st.session_state.current_idx = 0
+        st.session_state.score = 0
+        st.session_state.quiz_over = False
+        st.rerun()
